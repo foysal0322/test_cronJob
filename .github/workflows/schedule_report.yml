@@ -33,7 +33,7 @@ jobs:
       - name: Install ChromeDriver (Stable Version)
         run: |
           # Get stable Chrome version (Manually specify if needed)
-          $chromeVersion = "121.0.6167.139"  # <- Adjust this if needed
+          $chromeVersion = "134.0.6998.89"  # <- Adjust this if needed
           $chromeMajorVersion = $chromeVersion.Split('.')[0]
           
           # Fetch correct ChromeDriver version
