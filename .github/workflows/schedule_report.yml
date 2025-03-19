@@ -5,8 +5,8 @@ on:
     branches:
       - main
   schedule:
-    - cron: '*/5 * * * *'  # GitHub's minimum interval (5 min)
-  workflow_dispatch:  # Manual trigger
+    - cron: '*/5 * * * *'  # Runs every 5 minutes (GitHub's minimum interval)
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
   run-selenium:
@@ -24,21 +24,16 @@ jobs:
       - name: Install Dependencies
         run: pip install selenium requests
 
-      - name: Download and Install Chrome (Stable)
+      - name: Install Stable Chrome
         run: |
-          Invoke-WebRequest -Uri "https://dl.google.com/chrome/install/latest/chrome_installer.exe" -OutFile chrome_installer.exe
+          Invoke-WebRequest -Uri "https://dl.google.com/chrome/install/ChromeStandaloneSetup64.exe" -OutFile chrome_installer.exe
           Start-Process -FilePath chrome_installer.exe -ArgumentList "/silent /install" -NoNewWindow -Wait
         shell: powershell
 
-      - name: Install ChromeDriver (Matching Stable Chrome Version)
+      - name: Install ChromeDriver (Stable Version)
         run: |
-          $chromePath = "C:\Program Files\Google\Chrome\Application\chrome.exe"
-          if (!(Test-Path $chromePath)) {
-              Write-Host "Chrome is not installed properly!"
-              exit 1
-          }
-          
-          $chromeVersion = (Get-Item $chromePath).VersionInfo.ProductVersion
+          # Get stable Chrome version (Manually specify if needed)
+          $chromeVersion = "121.0.6167.139"  # <- Adjust this if needed
           $chromeMajorVersion = $chromeVersion.Split('.')[0]
           
           # Fetch correct ChromeDriver version
