@@ -5,12 +5,12 @@ on:
     branches:
       - main
   schedule:
-    - cron: '*/2 * * * *'  # Runs every 2 minutes
+    - cron: '*/2 * * * *'  # Runs every 2 minutes (GitHub free-tier minimum is 5 min)
   workflow_dispatch:  # Allows manual trigger
 
 jobs:
   run-selenium:
-    runs-on: windows-latest  # Run on Windows
+    runs-on: windows-latest
 
     steps:
       - name: Checkout Repository
@@ -24,14 +24,22 @@ jobs:
       - name: Install Dependencies
         run: pip install selenium requests
 
-      - name: Download and Set Up Chrome & ChromeDriver
+      - name: Install Chrome
         run: |
           $chromeInstaller = "chrome_installer.exe"
           Invoke-WebRequest "https://dl.google.com/chrome/install/latest/chrome_installer.exe" -OutFile $chromeInstaller
           Start-Process -FilePath $chromeInstaller -Args "/silent /install" -NoNewWindow -Wait
+
+      - name: Install ChromeDriver (Matching Chrome Version)
+        run: |
+          $chromeVersion = (Get-Command "C:\Program Files\Google\Chrome\Application\chrome.exe").FileVersionInfo.FileVersion
+          $chromeMajorVersion = $chromeVersion.Split('.')[0]
+          $chromeDriverVersionUrl = "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_" + $chromeMajorVersion
           
-          $chromeVersion = (Get-Item "C:\Program Files\Google\Chrome\Application\chrome.exe").VersionInfo.FileVersion
-          $chromeDriverUrl = "https://chromedriver.storage.googleapis.com/" + $chromeVersion.Split('.')[0] + ".0.0/chromedriver_win32.zip"
+          # Get the correct ChromeDriver version
+          $chromeDriverVersion = Invoke-WebRequest -Uri $chromeDriverVersionUrl -UseBasicParsing | Select-Object -ExpandProperty Content
+          $chromeDriverUrl = "https://chromedriver.storage.googleapis.com/" + $chromeDriverVersion + "/chromedriver_win32.zip"
+          
           Invoke-WebRequest $chromeDriverUrl -OutFile "chromedriver.zip"
           Expand-Archive chromedriver.zip -DestinationPath C:\chromedriver
           echo "C:\chromedriver" | Out-File -Append -Encoding ascii $env:GITHUB_PATH
