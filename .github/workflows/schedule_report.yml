@@ -1,17 +1,20 @@
-name: Scheduled Report to Discord
+name: Selenium Headless URL Poster (Windows)
 
 on:
+  push:
+    branches:
+      - main
   schedule:
-    - cron: '*/5 * * * *'  # Runs every 5 minutes
+    - cron: '*/2 * * * *'  # Runs every 2 minutes
   workflow_dispatch:  # Allows manual trigger
 
 jobs:
-  send_report:
-    runs-on: windows-latest  # Use 'ubuntu-latest' if preferred
+  run-selenium:
+    runs-on: windows-latest  # Run on Windows
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -19,9 +22,19 @@ jobs:
           python-version: '3.10'
 
       - name: Install Dependencies
-        run: |
-          pip install requests
+        run: pip install selenium requests
 
-      - name: Run Script
+      - name: Download and Set Up Chrome & ChromeDriver
         run: |
-          python send_report.py
+          $chromeInstaller = "chrome_installer.exe"
+          Invoke-WebRequest "https://dl.google.com/chrome/install/latest/chrome_installer.exe" -OutFile $chromeInstaller
+          Start-Process -FilePath $chromeInstaller -Args "/silent /install" -NoNewWindow -Wait
+          
+          $chromeVersion = (Get-Item "C:\Program Files\Google\Chrome\Application\chrome.exe").VersionInfo.FileVersion
+          $chromeDriverUrl = "https://chromedriver.storage.googleapis.com/" + $chromeVersion.Split('.')[0] + ".0.0/chromedriver_win32.zip"
+          Invoke-WebRequest $chromeDriverUrl -OutFile "chromedriver.zip"
+          Expand-Archive chromedriver.zip -DestinationPath C:\chromedriver
+          echo "C:\chromedriver" | Out-File -Append -Encoding ascii $env:GITHUB_PATH
+
+      - name: Run Selenium Script
+        run: python send_report.py
