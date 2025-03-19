@@ -5,8 +5,8 @@ on:
     branches:
       - main
   schedule:
-    - cron: '*/2 * * * *'  # Runs every 2 minutes (GitHub free-tier minimum is 5 min)
-  workflow_dispatch:  # Allows manual trigger
+    - cron: '*/5 * * * *'  # GitHub's minimum interval (5 min)
+  workflow_dispatch:  # Manual trigger
 
 jobs:
   run-selenium:
@@ -24,25 +24,32 @@ jobs:
       - name: Install Dependencies
         run: pip install selenium requests
 
-      - name: Install Chrome
+      - name: Download and Install Chrome (Stable)
         run: |
-          $chromeInstaller = "chrome_installer.exe"
-          Invoke-WebRequest "https://dl.google.com/chrome/install/latest/chrome_installer.exe" -OutFile $chromeInstaller
-          Start-Process -FilePath $chromeInstaller -Args "/silent /install" -NoNewWindow -Wait
+          Invoke-WebRequest -Uri "https://dl.google.com/chrome/install/latest/chrome_installer.exe" -OutFile chrome_installer.exe
+          Start-Process -FilePath chrome_installer.exe -ArgumentList "/silent /install" -NoNewWindow -Wait
+        shell: powershell
 
-      - name: Install ChromeDriver (Matching Chrome Version)
+      - name: Install ChromeDriver (Matching Stable Chrome Version)
         run: |
-          $chromeVersion = (Get-Command "C:\Program Files\Google\Chrome\Application\chrome.exe").FileVersionInfo.FileVersion
+          $chromePath = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+          if (!(Test-Path $chromePath)) {
+              Write-Host "Chrome is not installed properly!"
+              exit 1
+          }
+          
+          $chromeVersion = (Get-Item $chromePath).VersionInfo.ProductVersion
           $chromeMajorVersion = $chromeVersion.Split('.')[0]
+          
+          # Fetch correct ChromeDriver version
           $chromeDriverVersionUrl = "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_" + $chromeMajorVersion
-          
-          # Get the correct ChromeDriver version
-          $chromeDriverVersion = Invoke-WebRequest -Uri $chromeDriverVersionUrl -UseBasicParsing | Select-Object -ExpandProperty Content
+          $chromeDriverVersion = Invoke-RestMethod -Uri $chromeDriverVersionUrl
           $chromeDriverUrl = "https://chromedriver.storage.googleapis.com/" + $chromeDriverVersion + "/chromedriver_win32.zip"
-          
-          Invoke-WebRequest $chromeDriverUrl -OutFile "chromedriver.zip"
-          Expand-Archive chromedriver.zip -DestinationPath C:\chromedriver
+
+          Invoke-WebRequest -Uri $chromeDriverUrl -OutFile "chromedriver.zip"
+          Expand-Archive -Path chromedriver.zip -DestinationPath C:\chromedriver
           echo "C:\chromedriver" | Out-File -Append -Encoding ascii $env:GITHUB_PATH
+        shell: powershell
 
       - name: Run Selenium Script
         run: python send_report.py
